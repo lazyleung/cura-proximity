@@ -30,20 +30,13 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS,
 #define SERVER_PORT     8001
 #define USERNAME        "lazy"
 
-const int timeZone = 1;     // Central European Time
-//const int timeZone = -5;  // Eastern Standard Time (USA)
-//const int timeZone = -4;  // Eastern Daylight Time (USA)
-//const int timeZone = -8;  // Pacific Standard Time (USA)
-//const int timeZone = -7;  // Pacific Daylight Time (USA)
-
 const unsigned long
     dhcpTimeout     = 60L * 1000L, // Max time to wait for address from DHCP
     connectTimeout  = 15L * 1000L, // Max time to wait for server connection
     responseTimeout = 15L * 1000L; // Max time to wait for data from server
 
-
 int sensorPin = A0;
-int ledPin = 13;
+int ledPin = 8;
 int sensorValue = 0;
 int onPin = 9;
 
@@ -81,7 +74,6 @@ void setup() {
 
     // Connect to the AP.
     while (!cc3000.connectToAP(WLAN_SSID, WLAN_PASS, WLAN_SECURITY)) {
-        // Couldn't connect for some reason.  Fail and move on so the hardware goes back to sleep and tries again later.
         Serial.println(F("Failed!"));
     }
     Serial.println(F("Connected!"));
@@ -103,15 +95,16 @@ void setup() {
     // if(t) {                       // Success?
     //     lastPolledTime = t;         // Save time
     //     sketchTime     = millis();  // Save sketch time of last valid time query
+    //     currentTime = lastPolledTime + (millis() - sketchTime) / 1000;
+    // } else {
+        currentTime = 1429848335;
     // }
 
-    // currentTime = lastPolledTime + (millis() - sketchTime) / 1000;
-    // setTime(currentTime);
-    setTime(1429848335);
+    setTime(currentTime);
     
     ip = cc3000.IP2U32(SERVER_IP);
 
-    delay(5000);
+    // delay(1000);
 
     enableInterrupt(sensorPin, rise, RISING);
 }
@@ -134,6 +127,7 @@ void loop() {
                 if(count++ >= 3) {
                     activated = false;
                     String endTime = getCurrentTime();
+                    digitalWrite(ledPin, LOW);
                     sendData(startTime, endTime);
                     break;
                 }
@@ -144,7 +138,7 @@ void loop() {
             delay(1000);
         }
     }
-    digitalWrite(ledPin, LOW);
+    //digitalWrite(ledPin, LOW);
     sleep();
 }
 
@@ -194,17 +188,15 @@ void sendData(String beginTime, String endTime) {
         String data3 = "&end=" + String(endTime);
         int dataLength = data0.length() + data1.length() + data2.length() + data3.length();
 
-        Serial.println(F("\nSending:"));
-        Serial.println(data0);
-        Serial.println(data1);
-        Serial.println(data2);
-        Serial.println(data3);
+        // Serial.println(F("\nSending:"));
+        // Serial.println(data0);
+        // Serial.println(data1);
+        // Serial.println(data2);
+        // Serial.println(data3);
 
         //String data = "start=2015-02-03T00:00&user_name=lazy&time_recorded=2015-02-03T00:00&end=2015-03-02T00:10";
         //dataLength = data.length();
 
-        //client.fastrprint(F("POST / HTTP/1.1\r\n"));
-        //client.fastrprint(F("Host: 192.168.1.76:8000\r\n"));
         client.fastrprint(F("POST /api/v1/washroom/ HTTP/1.1\r\n"));
         //client.fastrprint(F("Host: 128.2.83.208:8001\r\n"));
         
@@ -213,7 +205,6 @@ void sendData(String beginTime, String endTime) {
         client.fastrprint(F("\r\n"));
         client.fastrprint(F("Accept:*/*\r\n"));
         client.fastrprint(F("Accept-Encoding:gzip, deflate\r\n"));
-        //client.println(F("Accept-Language:en-US,en;q=0.8\r\n"));
         client.fastrprint(F("User-Agent: runscope/0.1\r\n"));
         client.fastrprint(F("Content-Type: application/x-www-form-urlencoded\r\n"));
         client.fastrprint(F("Connection: close\r\n"));
@@ -324,6 +315,8 @@ unsigned long getTime(void) {
   return t;
 }
 
+// Return time as a String in the format
+// YYYY-MM-DDTHH:MM:SS
 String getCurrentTime() {
     int temp;
     String t = String(year()) + "-";
